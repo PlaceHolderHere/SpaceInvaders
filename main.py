@@ -1,5 +1,4 @@
 import pygame
-from winsound import PlaySound, SND_ASYNC
 from random import randint
 
 # CLASSES
@@ -59,11 +58,11 @@ class Player:
 
         return self_rect.colliderect(collision_rect)
 
-    def shoot(self, firing_cooldown):
+    def shoot(self, firing_cooldown, shoot_SFX):
         if self.firing_cooldown == 0:
             self.bullets.append(Bullet(self.x + (self.size / 2) - 8, self.y, 18, 64, -8, pygame.image.load("bullet.png")))
             self.firing_cooldown = firing_cooldown
-            PlaySound("fire.wav", SND_ASYNC)
+            shoot_SFX.play()
 
 class Bullet:
     def __init__(self, x, y, sizeX, sizeY, change_Y, sprite):
@@ -186,6 +185,12 @@ def main():
     for i in range(100):
         STARS.append((randint(0, 704), randint(0, 704)))
 
+    # Pygame Init
+    pygame.init()
+    pygame.mixer.init()
+    pygame.display.set_caption("Space Invaders by PlaceHolderHere")
+    win = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+
     # Buttons
     resume_Button = Button(254, 222, pygame.image.load("Resume.png"))
     restart_Button = Button(254, 320, pygame.image.load("Restart.png"))
@@ -195,16 +200,19 @@ def main():
     main_menu_Button = Button(254, 124, pygame.image.load("Main Menu.png"))
     retry_Button = Button(254, 320, pygame.image.load("Retry.png"))
 
+    # SFX
+    player_shoot_SFX = pygame.mixer.Sound("fire.wav")
+    player_explode_SFX = pygame.mixer.Sound("explode_player.wav")
+    alien_explode_SFX = pygame.mixer.Sound("explode.wav")
+    alien_fire_SFX = pygame.mixer.Sound("enemy_fire.wav")
+    fortress_hit_SFX = pygame.mixer.Sound("fortress_hit.wav")
+
     # Variables
     running = True
     paused = 1
     player_score = 0
     wave_number = 1
     menu = 0
-
-    pygame.init()
-    pygame.display.set_caption("Space Invaders by PlaceHolderHere")
-    win = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
     player = Player(0, 630, SPRITE_SIZE, 0, pygame.image.load("Player.png"))
     aliens = alien_init(68, 72, SPRITE_SIZE, ALIEN_SPEED)
@@ -224,7 +232,7 @@ def main():
                 if event.key == pygame.K_ESCAPE:
                     paused *= -1
 
-                if paused > 0:
+                if paused > 0 and menu == 2:
                     if event.key == pygame.K_a:
                         player.change_X = -PLAYER_SPEED
 
@@ -232,7 +240,7 @@ def main():
                         player.change_X = PLAYER_SPEED
 
                     if event.key == pygame.K_SPACE:
-                        player.shoot(PLAYER_FIRING_COOLDOWN)
+                        player.shoot(PLAYER_FIRING_COOLDOWN, player_shoot_SFX)
 
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_a or event.key == pygame.K_s:
@@ -292,7 +300,7 @@ def main():
                                 if bullet.collision(pygame.Rect(alien.x, alien.y, alien.size, alien.size)):
                                     player.bullets.pop(bullet_index)
                                     alien_list.pop(alien_index)
-                                    PlaySound("explode.wav", SND_ASYNC)
+                                    alien_explode_SFX.play()
 
                                     player_score += 100
                                     break
@@ -303,7 +311,7 @@ def main():
                                     fortress.pop(fortress_index)
                                     player.bullets.pop(bullet_index)
 
-                                    PlaySound("fortress_hit.wav", SND_ASYNC)
+                                    fortress_hit_SFX.play()
                                     break
 
                         bullet.blit(win)
@@ -333,7 +341,7 @@ def main():
                     for alien in alien_list:
                         if alien.y > 420:
                             player.lives = -1
-                            PlaySound("explode_player.wav", SND_ASYNC)
+                            player_explode_SFX.play()
                             break
 
                         if alien.x > 640:
@@ -362,6 +370,7 @@ def main():
                         # Shoot
                         if randint(1, 2000) <= (difficulty_calculator(wave_number, DIFFICULTY_CAP, DIFFICULTY)):
                             alien.shoot()
+                            alien_fire_SFX.play()
 
                         # Alien Bullet
                         for bullet_index, bullet in enumerate(alien.bullets):
@@ -372,7 +381,7 @@ def main():
                                 alien.bullets.pop(bullet_index)
                                 player.alive = False
                                 player.lives -= 1
-                                PlaySound("explode_player.wav", SND_ASYNC)
+                                player_explode_SFX.play()
                                 break
 
                             for fortress in fortresses:
@@ -380,6 +389,7 @@ def main():
                                     if bullet.collision(pygame.Rect(fortress_block.x, fortress_block.y, fortress_block.size,fortress_block.size)):
                                         fortress.pop(fortress_index)
                                         alien.bullets.pop(bullet_index)
+                                        fortress_hit_SFX.play()
                                         break
 
                 # FORTRESS
